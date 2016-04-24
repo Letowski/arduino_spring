@@ -1,0 +1,40 @@
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.2.6.RELEASE")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'spring-boot'
+
+jar {
+    baseName = 'arduino_spring'
+    version =  '0.1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework:spring-jdbc")
+    compile("org.springframework:spring-context:4.1.6.RELEASE")
+    compile("org.springframework:spring-context-support:4.1.6.RELEASE")
+
+    testCompile("junit:junit")
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+}
+
+task wrapper(type: org.gradle.api.tasks.wrapper.Wrapper) {
+    gradleVersion = '2.3'
+}
