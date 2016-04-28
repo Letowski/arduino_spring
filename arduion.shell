@@ -1,0 +1,263 @@
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <Servo.h>
+
+#define STEPPER1          1
+#define STEPPER2          2
+#define STEPPER3          3
+#define STEPPER4          4
+#define STEPPER5          5
+
+#define SERVO1            1
+#define SERVO2            2
+
+#define RIGHT 1
+#define LEFT 2
+
+#define STEP_PIN 1
+#define DIR_PIN 2
+#define ENABLE_PIN 3
+#define MIN_PIN 4
+#define MAX_PIN 5
+
+Servo servo[2];
+
+
+char sp_startMarker;           // Переменная, содержащая маркер начала пакета
+char sp_stopMarker;            // Переменная, содержащая маркер конца пакета
+char sp_dataString[100];            // Здесь будут храниться принимаемые данные
+boolean sp_startMarkerStatus;        // Флаг состояния маркера начала пакета
+int sp_dataLength;               // Флаг состояния принимаемых данных
+
+
+void sp_SetUp(){
+  Serial.begin(9600);                               // Инициализируем последовательный интерфейс
+  sp_startMarker = 35;//"#";     // Так будет выглядеть маркер начала пакета
+  sp_stopMarker = 59;//";";      // Так будет выглядеть маркер конца пакета
+  sp_ResetAll();                 // Полный сброс протокола
+}
+
+void sp_ResetAll(){
+  memset(sp_dataString, 0, sizeof sp_dataString);
+  sp_startMarkerStatus = false;     // Сброс флага маркера начала пакета
+  sp_dataLength = 0;            // Сброс флага принимаемых данных
+}
+
+
+void sp_Send(char* data){
+  Serial.print(sp_startMarker);
+  Serial.print(data);
+  Serial.print(sp_stopMarker);
+}
+
+
+void sp_Read(){
+  while(Serial.available())            // Пока в буфере есть что читать и пакет не является принятым
+  {
+    int bufferChar = Serial.read();                           // Читаем очередной байт из буфера
+    if(!sp_startMarkerStatus)        // Если стартовый маркер не сформирован
+    {
+     if(sp_startMarker == bufferChar)   // if it is a start byte
+     {
+       sp_startMarkerStatus=true;
+     }
+     else
+     {
+       sp_ResetAll();                                         // Если байты не совпали, то это не маркер. Нас нае****, расходимся.
+     }
+    }
+    else
+    {
+     if(sp_stopMarker == bufferChar)   // if it is a stop byte
+     {
+      parse_command(sp_dataString,sp_dataLength);
+      sp_ResetAll();
+      return;
+     }
+     else{
+      sp_dataString[sp_dataLength]= (char)bufferChar;
+      sp_dataLength++;
+     }
+    }
+  }
+}
+
+int * stepper_pins(int stepper){
+  static int  pins[10];
+    if(stepper==STEPPER1){
+    pins[STEP_PIN]=54;
+    pins[DIR_PIN]=55;
+    pins[ENABLE_PIN]=38;
+    pins[MIN_PIN]=3;
+//    pins[MAX_PIN]=2;
+  }
+  if(stepper==STEPPER2){
+    pins[STEP_PIN]=60;
+    pins[DIR_PIN]=61;
+    pins[ENABLE_PIN]=56;
+//    pins[MIN_PIN]=14;
+    pins[MIN_PIN]=2;
+//    pins[MAX_PIN]=15;
+  }
+  if(stepper==STEPPER3){
+    pins[STEP_PIN]=46;
+    pins[DIR_PIN]=48;
+    pins[ENABLE_PIN]=62;
+//    pins[MIN_PIN]=18;
+    pins[MIN_PIN]=14;
+//    pins[MAX_PIN]=19;
+  }
+  if(stepper==STEPPER4){
+    pins[STEP_PIN]=26;
+    pins[DIR_PIN]=28;
+    pins[ENABLE_PIN]=24;
+//    pins[MIN_PIN]=0;
+    pins[MIN_PIN]=15;
+//    pins[MAX_PIN]=0;
+  }
+  if(stepper==STEPPER5){
+    pins[STEP_PIN]=36;
+    pins[DIR_PIN]=34;
+    pins[ENABLE_PIN]=30;
+//    pins[MIN_PIN]=0;
+    pins[MIN_PIN]=18;
+//    pins[MAX_PIN]=0;
+  }
+  return pins;
+}
+int servo_pins(int servo){
+  if(servo==SERVO1){
+    return 11;
+  }
+  if(servo==SERVO2){
+    return 6;
+  }
+}
+
+
+void stepper_setup(int stepper){
+int *pins=stepper_pins(stepper);
+pinMode(pins[MIN_PIN], INPUT);
+pinMode(pins[MAX_PIN], INPUT);
+}
+
+void servo_setup(int servo_num){
+  servo[servo_num].attach(servo_pins(servo_num));
+}
+
+void setup() {
+stepper_setup(STEPPER1);
+stepper_setup(STEPPER2);
+stepper_setup(STEPPER3);
+stepper_setup(STEPPER4);
+stepper_setup(STEPPER5);
+
+servo_setup(SERVO1);
+servo_setup(SERVO2);
+
+sp_SetUp();                                       // Инициализируем протокол.
+}
+
+void loop() {
+sp_Read();                         // Вызов «читалки» принятых данных
+delay(500);
+}
+
+void parse_command(char* dataString, int dataLength){
+  String sp_dataString = String(dataString);
+
+if((dataString[0]>=49) && (dataString[0]<=53)){//1..5
+  int stepper = dataString[0]-48;
+  int direct=0;
+  int steps=0;
+  String steps_str;
+  if(dataString[1]==114){//"r"
+    direct=RIGHT;
+  }else{
+    direct=LEFT;
+  }
+  steps_str=sp_dataString.substring(2,sp_dataString.length());
+  steps=steps_str.toInt();
+send_result(stepper_rotate(stepper,direct,steps));
+}
+
+if((dataString[0]>=54) && (dataString[0]<=55)){//6..7
+  int servo_num = dataString[0]-53; //1..2
+  int steps=0;
+  String steps_str;
+  steps_str=sp_dataString.substring(1,sp_dataString.length());
+  steps=steps_str.toInt();
+  send_result(servo_rotate(servo_num,steps));
+}
+
+}
+
+void send_result(boolean result_bool){
+  char result_string[5];
+  if(result_bool){
+  strcpy(result_string,"done");
+}else{
+  strcpy(result_string,"fail");
+}
+sp_Send(result_string);
+}
+
+boolean servo_rotate(int servo_num, int steps){
+  servo[servo_num].write(steps);
+  return true;
+}
+
+boolean stepper_rotate(int stepper, int direct, int steps){
+  int *pins=stepper_pins(stepper);
+  stepper_activate(pins);
+  int stepper_dir_val=0;
+  if(direct==RIGHT){
+    stepper_dir_val=HIGH;
+  }else{
+    stepper_dir_val=LOW;
+  }
+  digitalWrite(pins[DIR_PIN], stepper_dir_val);
+
+if(steps==0){
+  steps=10000;
+}
+  for(int i=0; i<=steps; i++){
+
+    if(pins[MIN_PIN]>0){
+      if((digitalRead(pins[MIN_PIN])==LOW) && (direct==LEFT)){
+        stepper_disable(pins);
+        return false;
+      }
+    }
+//    if(pins[MAX_PIN]>0){
+//      if((digitalRead(pins[MAX_PIN])==LOW) && (direct==RIGHT)){
+//        stepper_disable(pins);
+//        return false;
+//      }
+//    }
+
+  digitalWrite(pins[STEP_PIN], HIGH);
+  delay(1);
+  digitalWrite(pins[STEP_PIN], LOW);
+  delay(1);
+  }
+  stepper_disable(pins);
+  return true;
+}
+
+void stepper_activate(int* pins){
+pinMode(pins[STEP_PIN], OUTPUT);
+pinMode(pins[DIR_PIN], OUTPUT);
+pinMode(pins[ENABLE_PIN], OUTPUT);
+digitalWrite(pins[ENABLE_PIN], LOW);
+}
+void stepper_disable(int* pins){
+pinMode(pins[STEP_PIN], INPUT);
+pinMode(pins[DIR_PIN], INPUT);
+pinMode(pins[ENABLE_PIN], INPUT);
+}
+
+
+
+
