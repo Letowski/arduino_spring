@@ -11,7 +11,7 @@ public class Stepper {
     private static SerialPort serialPort;
     public Stepper() {
         //Передаём в конструктор имя порта
-        serialPort = new SerialPort("/dev/ttyUSB0");
+        serialPort = new SerialPort("/dev/ttyUSB7");
         try {
             serialPort.openPort();
             System.out.println("open");

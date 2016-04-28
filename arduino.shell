@@ -21,7 +21,7 @@
 #define MIN_PIN 4
 #define MAX_PIN 5
 
-Servo servo[2];
+Servo servo[3];
 
 
 char sp_startMarker;           // Переменная, содержащая маркер начала пакета
