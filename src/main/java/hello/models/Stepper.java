@@ -21,7 +21,7 @@ public class Stepper {
         for( String portName : portNames ) {
 
             //Передаём в конструктор имя порта
-            serialPort = new SerialPort("/dev/ttyUSB7");
+            serialPort = new SerialPort(portName);
             try {
                 serialPort.openPort();
                 System.out.println("open");
