@@ -18,6 +18,7 @@ public class Stepper {
     };
 
     public Stepper() {
+        System.load("/opt/libjSSC-2.8_armhf.so");
         for( String portName : portNames ) {
 
             //Передаём в конструктор имя порта
