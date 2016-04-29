@@ -18,7 +18,8 @@ public class Stepper {
     };
 
     public Stepper() {
-        System.load("/opt/libjSSC-2.8_armhf.so");
+//        System.load("/opt/libjSSC-2.8_armhf.so");
+//        sudo adduser <yourname> dialout
         for( String portName : portNames ) {
 
             //Передаём в конструктор имя порта
